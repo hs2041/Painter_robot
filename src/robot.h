@@ -2,18 +2,14 @@
 
 #include <cmath>
 #include <random>
-#include "landmark.h"
 
 class Robot
 {
 public:
     Robot();
 
-    bool landmark_in_view(Landmark &l);
     void update(double dt);
     bool is_moving();
-
-    static void landmark_range_bearing(const Landmark &l, double x, double y, double yaw, double &range, double &bearing);
 
     // setters/getters for the robot's state
     void x(double _x) { m_x = _x; }

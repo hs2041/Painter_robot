@@ -9,8 +9,9 @@ using namespace std;
 
 OpenGLDisplay::OpenGLDisplay() {}
 
-void OpenGLDisplay::main(std::string title, int width, int height)
+void OpenGLDisplay::main(std::string title, int width, int height, std::vector<Point> path)
 {
+    follow_path = path;
     m_width = width;
     m_height = height;
 
@@ -36,7 +37,6 @@ void OpenGLDisplay::main(std::string title, int width, int height)
 
     print_help();
 
-    init_landmarks();
     init_robot();
 
     m_last_tick = SDL_GetTicks();
@@ -77,26 +77,7 @@ void OpenGLDisplay::process_events()
             case SDL_KEYDOWN: {
                 if (event.key.keysym.sym == SDLK_ESCAPE) {
                     m_quit = true;
-                } else if (event.key.keysym.sym == SDLK_LEFT) {
-                    m_yaw_vel_sp = ROBOT_YAW_VEL;
-                } else if (event.key.keysym.sym == SDLK_RIGHT) {
-                    m_yaw_vel_sp = -ROBOT_YAW_VEL;
-                } else if (event.key.keysym.sym == SDLK_UP) {
-                    m_vel_sp = ROBOT_VEL;
-                } else if (event.key.keysym.sym == SDLK_DOWN) {
-                    m_vel_sp = -ROBOT_VEL;
                 }
-
-                break;
-            }
-
-            case SDL_KEYUP: {
-                if (event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_RIGHT) {
-                    m_yaw_vel_sp = 0;
-                } else if (event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_DOWN) {
-                    m_vel_sp = 0;
-                }
-
                 break;
             }
         }
@@ -123,30 +104,10 @@ void OpenGLDisplay::display()
     SDL_GL_SwapWindow(m_window);
 }
 
-void OpenGLDisplay::init_landmarks()
-{
-    // random number generation
-    random_device rd;
-    default_random_engine random_engine;
-    uniform_real_distribution<> dice(0, 1);
-
-    random_engine.seed(rd());
-
-    m_landmarks.resize(TOTAL_LANDMARKS);
-
-    for (auto &l : m_landmarks) {
-        l.x = BOUNDARY_X1 + (BOUNDARY_X2 - BOUNDARY_X1)*dice(random_engine);
-        l.y = BOUNDARY_Y1 + (BOUNDARY_Y2 - BOUNDARY_Y1)*dice(random_engine);
-        l.r = 1.0;
-        l.g = 0.0;
-        l.b = 0.0;
-    }
-}
-
 void OpenGLDisplay::init_robot()
 {
-    m_robot.x(m_width*2/3);
-    m_robot.y(m_height/2);
+    m_robot.x(100);
+    m_robot.y(100);
     m_robot.yaw(M_PI_2);
 
 }
@@ -225,43 +186,37 @@ void OpenGLDisplay::render_window()
     glPopMatrix();
 }
 
-void OpenGLDisplay::render_landmarks()
-{
-    glPushMatrix();
-    glLoadIdentity();
-
-    for (auto l : m_landmarks) {
-        glColor3f(l.r, l.g, l.b);
-
-        if (m_robot.landmark_in_view(l)) {
-            glLineWidth(5.0);
-        } else {
-            glLineWidth(1.0);
-        }
-
-        glBegin(GL_LINE_LOOP);
-        glVertex2f(l.x - LANDMARK_RADIUS,  l.y - LANDMARK_RADIUS);
-        glVertex2f(l.x - LANDMARK_RADIUS,  l.y + LANDMARK_RADIUS);
-        glVertex2f(l.x + LANDMARK_RADIUS,  l.y + LANDMARK_RADIUS);
-        glVertex2f(l.x + LANDMARK_RADIUS,  l.y - LANDMARK_RADIUS);
-        glEnd();
-    }
-
-    glLineWidth(1.0);
-
-    glPopMatrix();
-}
-
 void OpenGLDisplay::update_robot()
 {
     double prev_x = m_robot.x();
     double prev_y = m_robot.y();
 
-    m_robot.vel(m_vel_sp);
-    m_robot.yaw_vel(m_yaw_vel_sp);
+    if (follow_path.size() > 0) {
+        double target_x = static_cast<double>(follow_path[0].x * 100);
+        double target_y = static_cast<double>(follow_path[0].y * 100);
+        // std::cout << "target x: " << target_x << "\n";
+        // std::cout << "target y: " << target_y << "\n";
 
-    m_robot.update(m_dt);
+        if (std::sqrt(std::pow(target_x - m_robot.x(), 2) + std::pow(target_y - m_robot.y(), 2)) < 10) {
+            follow_path.erase(follow_path.begin());
+            return;
+        }
+        double delta_x = (target_x - m_robot.x());
+        double delta_y = (target_y - m_robot.y());
 
+        if (delta_x > 0.0)
+            delta_x = 3.0;
+        else if (delta_x < 0.0)
+            delta_x = -3.0;
+        if (delta_y > 0.0)
+            delta_y = 3.0;
+        else if (delta_y < 0.0)
+            delta_y = -3.0;
+
+        m_robot.x(m_robot.x() + delta_x);
+        m_robot.y(m_robot.y() + delta_y);
+    }
+        
     // enforce boundary
     if (m_robot.x() < BOUNDARY_X1 ||
         m_robot.y() < BOUNDARY_Y1 ||
@@ -284,27 +239,10 @@ void OpenGLDisplay::update_robot()
         m_robot.vel(0);
     }
 
-    if (m_robot.is_moving()) {
-        vector<Sensor> sensors;
-
-        for (size_t i=0; i < m_landmarks.size(); i++) {
-            auto l = m_landmarks[i];
-
-            if (m_robot.landmark_in_view(l)) {
-                Sensor z;
-
-                z.id = i;
-
-                m_robot.landmark_range_bearing(l, m_robot.x(), m_robot.y(), m_robot.yaw(), z.range, z.bearing);
-
-                sensors.push_back(z);
-            }
-        }
-    }
 }
 
 void OpenGLDisplay::print_help()
 {
-    cout << "Use the arrow key to move the robot around" << endl;
-    cout << "  - Green is the true state of the robot" << endl;
+    cout << "Robot will do the painting autonomously" << endl;
+    cout << "Press escape to quit" << endl;
 }

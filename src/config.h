@@ -1,6 +1,5 @@
 #pragma once
 
-#include "landmark.h"
 
 // All metric units are in pixels.
 
@@ -13,10 +12,10 @@ static const int BOUNDARY_X2 = 950;
 static const int BOUNDARY_Y1 = 50;
 static const int BOUNDARY_Y2 = 950;
 
-static const int WINDOW_X1 = 400;
-static const int WINDOW_X2 = 600;
-static const int WINDOW_Y1 = 400;
-static const int WINDOW_Y2 = 600;
+static const int WINDOW_X1 = 350;
+static const int WINDOW_X2 = 550;
+static const int WINDOW_Y1 = 450;
+static const int WINDOW_Y2 = 650;
 
 // landmarks are randomly generated
 static const int TOTAL_LANDMARKS = 20;

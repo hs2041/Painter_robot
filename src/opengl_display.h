@@ -4,17 +4,17 @@
 #include <SDL2/SDL.h>
 #include <string>
 #include <vector>
-
+#include <cmath>
 #include "robot.h"
-#include "landmark.h"
-#include "EKF_SLAM.h"
+
+#include "path_finder.h"
 
 class OpenGLDisplay
 {
 public:
     OpenGLDisplay();
 
-    void main(std::string title, int width, int height);
+    void main(std::string title, int width, int height, std::vector<Point> path);
 
 private:
     // Display stuff
@@ -22,13 +22,11 @@ private:
     void process_events();
     void display();
 
-    void render_landmarks();
     void render_robot();
     void render_robot(float x, float y, float yaw, float r, float g, float b);
     void render_boundary();
     void render_window();
 
-    void init_landmarks();
     void init_robot();
     void update_robot();
 
@@ -37,9 +35,6 @@ private:
 private:
     static constexpr float ROBOT_RADIUS = 10;
     static constexpr float ROBOT_HEADING = 20;
-    static constexpr float LANDMARK_RADIUS = 5;
-
-    std::vector<Landmark> m_landmarks;
 
     bool m_quit = false;
     int m_width;
@@ -55,4 +50,5 @@ private:
     Robot m_robot;
 
     double m_dt = 0;
+    std::vector<Point> follow_path;
 };
